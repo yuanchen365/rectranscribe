@@ -1,0 +1,17 @@
+{
+  "seg_id": "01",
+  "audio": "part_01.wav",
+  "audio_sha256": "87800606914b65f77ed27bd648e3e805253ffc540a5594e35713a7443c3383f0",
+  "paths": {
+    "transcript": "output\\segments_text\\seg_01_transcript.txt",
+    "review": "output\\segments_text\\seg_01_review.txt",
+    "revised": "output\\segments_text\\seg_01_revised.txt",
+    "meta": "output\\segments_text\\seg_01_meta.json"
+  },
+  "lens": {
+    "transcript": 1811,
+    "review": 618,
+    "revised": 1638
+  },
+  "ok": true
+}
