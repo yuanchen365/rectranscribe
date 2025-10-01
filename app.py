@@ -40,20 +40,22 @@ os.makedirs(SEGMENTS_ROOT, exist_ok=True)
 
 # ========= 小工具 =========
 def allowed_file(fname: str) -> bool:
-    """檔名副檔名是否在白名單"""
     return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def read_file_text(filepath: str) -> str:
-    """讀文字檔，不存在則回提示"""
     return open(filepath, "r", encoding="utf-8").read() if os.path.exists(filepath) else "(檔案不存在)"
 
 def log_exception(e: Exception) -> str:
-    """把例外寫到 app.log，回傳錯誤代碼"""
     err_id = f"ERR-{int(time.time())}"
     log_path = os.path.join(APP_ROOT, "app.log")
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(f"[{err_id}] {repr(e)}\n{traceback.format_exc()}\n")
     return err_id
+
+def to_rel_final_path(abs_path: str) -> str:
+    """把 FINAL_FOLDER 底下的絕對路徑轉成相對路徑，並統一使用 / 分隔"""
+    rel = os.path.relpath(abs_path, FINAL_FOLDER)
+    return rel.replace("\\", "/")
 
 # ========= 健康檢查 =========
 @app.get("/healthz")
@@ -66,27 +68,26 @@ def index():
     """
     - Step 1: 上傳音檔
     - Step 2: 顯示切割後的分段數，輸入要分析的段數並按「開始分析」
-    - 完成後：透過 ?report=xxx 讀 output/final 下的結果顯示（不把大文字放進 session）
+    - 完成後：透過 ?report=<相對路徑> 顯示結果與下載
     """
     step = session.get("step", 1)
     total_segments = session.get("total_segments", 0)
 
-    report_filename = request.args.get("report") or session.get("report_filename")
-    transcript_text = ""
-    review_text = ""
-    revised_text = ""
+    # report 是相對於 FINAL_FOLDER 的路徑，例如：job_20251001_153743/meeting_summary.docx
+    report_relpath = request.args.get("report") or session.get("report_relpath")
+    transcript_text = review_text = revised_text = ""
 
-    if report_filename:
-        # 只在頁面上需要時，從檔案系統讀內容（若不存在，read_file_text 會回提示字串）
-        transcript_text = read_file_text(os.path.join(FINAL_FOLDER, "transcript.txt"))
-        review_text     = read_file_text(os.path.join(FINAL_FOLDER, "transcript_review.txt"))
-        revised_text    = read_file_text(os.path.join(FINAL_FOLDER, "transcript_revised.txt"))
+    if report_relpath:
+        final_dir = os.path.dirname(os.path.join(FINAL_FOLDER, report_relpath))
+        transcript_text = read_file_text(os.path.join(final_dir, "transcript.txt"))
+        review_text     = read_file_text(os.path.join(final_dir, "transcript_review.txt"))
+        revised_text    = read_file_text(os.path.join(final_dir, "transcript_revised.txt"))
 
     return render_template(
         "index.html",
         step=step,
         total_segments=total_segments,
-        report_link=report_filename,
+        report_link=report_relpath,   # 直接帶相對路徑給下載用
         transcript_text=transcript_text,
         review_text=review_text,
         revised_text=revised_text,
@@ -96,7 +97,6 @@ def index():
 @app.get("/reset")
 def reset():
     try:
-        _ = session.get("job_id")  # 若未來要做檔案清理可用到
         session.clear()
     except Exception:
         pass
@@ -137,7 +137,7 @@ def upload():
         # 計算本次分段數
         total_segments = len([f for f in os.listdir(job_dir) if f.lower().endswith(".wav")])
 
-        # 將狀態寫進 session（都很小）：進入 Step 2
+        # 將狀態寫進 session：進入 Step 2
         session["step"] = 2
         session["job_dir"] = job_dir
         session["total_segments"] = total_segments
@@ -165,7 +165,7 @@ def run():
         max_segments_str = (request.form.get("max_segments") or "").strip()
         max_segments: Optional[int] = int(max_segments_str) if max_segments_str.isdigit() else None
 
-        # 執行整體分析流程（輸出到 output/final）
+        # 執行整體分析流程：預期會產生 output/final/job_xxx/meeting_summary.docx
         docx_path = run_batch_process(
             segments_dir=job_dir,
             max_segments=max_segments,
@@ -179,11 +179,10 @@ def run():
         session.pop("total_segments", None)
 
         if docx_path and os.path.exists(docx_path):
-            report_filename = os.path.basename(docx_path)
-            session["report_filename"] = report_filename  # 只存小字串
-            flash(f"✅ 分析完成！點擊即可下載報告：{report_filename}")
-            # 透過 ?report= 帶回首頁，首頁自行從檔案系統讀取文字內容
-            return redirect(url_for("index", report=report_filename))
+            report_relpath = to_rel_final_path(docx_path)  # e.g., job_.../meeting_summary.docx
+            session["report_relpath"] = report_relpath
+            flash(f"✅ 分析完成！點擊即可下載報告：{os.path.basename(docx_path)}")
+            return redirect(url_for("index", report=report_relpath))
         else:
             flash("⚠️ 分析失敗，請確認音檔格式或查看日誌（app.log）")
             return redirect(url_for("index"))
@@ -197,10 +196,12 @@ def run():
         session.pop("total_segments", None)
         return redirect(url_for("index"))
 
-# ========= 下載路由（從 output/final 提供） =========
+# ========= 下載路由（從 output/final 提供，相對路徑允許子資料夾） =========
 @app.route("/download/<path:filename>")
 def download(filename: str):
-    return send_from_directory(FINAL_FOLDER, filename, as_attachment=True)
+    # filename 是相對於 FINAL_FOLDER 的路徑
+    safe_rel = filename.replace("\\", "/")
+    return send_from_directory(FINAL_FOLDER, safe_rel, as_attachment=True)
 
 # ========= 本地開發用（正式環境用 gunicorn 啟動） =========
 if __name__ == "__main__":
