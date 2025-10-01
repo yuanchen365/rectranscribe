@@ -38,17 +38,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(FINAL_FOLDER, exist_ok=True)
 os.makedirs(SEGMENTS_ROOT, exist_ok=True)
 
-
 # ========= 小工具 =========
 def allowed_file(fname: str) -> bool:
     """檔名副檔名是否在白名單"""
     return "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
 def read_file_text(filepath: str) -> str:
     """讀文字檔，不存在則回提示"""
     return open(filepath, "r", encoding="utf-8").read() if os.path.exists(filepath) else "(檔案不存在)"
-
 
 def log_exception(e: Exception) -> str:
     """把例外寫到 app.log，回傳錯誤代碼"""
@@ -58,12 +55,10 @@ def log_exception(e: Exception) -> str:
         f.write(f"[{err_id}] {repr(e)}\n{traceback.format_exc()}\n")
     return err_id
 
-
 # ========= 健康檢查 =========
 @app.get("/healthz")
 def healthz():
     return jsonify(status="ok")
-
 
 # ========= 首頁（依狀態顯示） =========
 @app.route("/", methods=["GET"])
@@ -82,7 +77,7 @@ def index():
     revised_text = ""
 
     if report_filename:
-        # 只在頁面上需要時，從檔案系統讀內容
+        # 只在頁面上需要時，從檔案系統讀內容（若不存在，read_file_text 會回提示字串）
         transcript_text = read_file_text(os.path.join(FINAL_FOLDER, "transcript.txt"))
         review_text     = read_file_text(os.path.join(FINAL_FOLDER, "transcript_review.txt"))
         revised_text    = read_file_text(os.path.join(FINAL_FOLDER, "transcript_revised.txt"))
@@ -97,6 +92,15 @@ def index():
         revised_text=revised_text,
     )
 
+# 提供一鍵清除流程狀態，回到 Step 1
+@app.get("/reset")
+def reset():
+    try:
+        _ = session.get("job_id")  # 若未來要做檔案清理可用到
+        session.clear()
+    except Exception:
+        pass
+    return redirect(url_for("index"))
 
 # ========= Step 1：上傳 + 切割（不啟動分析） =========
 @app.post("/upload")
@@ -147,7 +151,6 @@ def upload():
         flash(f"❌ 系統錯誤（上傳/切割），代碼 {err_id}")
         return redirect(url_for("index"))
 
-
 # ========= Step 2：執行分析（run_batch_process） =========
 @app.post("/run")
 def run():
@@ -160,7 +163,7 @@ def run():
 
         # 取得使用者指定的段數
         max_segments_str = (request.form.get("max_segments") or "").strip()
-        max_segments = int(max_segments_str) if max_segments_str.isdigit() else None
+        max_segments: Optional[int] = int(max_segments_str) if max_segments_str.isdigit() else None
 
         # 執行整體分析流程（輸出到 output/final）
         docx_path = run_batch_process(
@@ -194,12 +197,10 @@ def run():
         session.pop("total_segments", None)
         return redirect(url_for("index"))
 
-
 # ========= 下載路由（從 output/final 提供） =========
 @app.route("/download/<path:filename>")
 def download(filename: str):
     return send_from_directory(FINAL_FOLDER, filename, as_attachment=True)
-
 
 # ========= 本地開發用（正式環境用 gunicorn 啟動） =========
 if __name__ == "__main__":
