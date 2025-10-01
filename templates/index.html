@@ -1,81 +1,100 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>🎧 AI 語音逐字稿分析</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-    <style>
-        body {
-            background-color: #f9f9f9;
-            padding-top: 30px;
-        }
-        .container {
-            max-width: 960px;
-        }
-        .section-title {
-            font-weight: bold;
-            margin-top: 40px;
-            margin-bottom: 15px;
-            font-size: 1.25rem;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 15px;
-            border-radius: 6px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>🎧 AI 語音逐字稿分析</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+  />
+  <style>
+    body { background-color:#f9f9f9; padding-top:30px; }
+    .container { max-width: 960px; }
+    .section-title { font-weight:bold; margin-top:40px; margin-bottom:15px; font-size:1.25rem; }
+    pre { background:#f4f4f4; padding:15px; border-radius:6px; max-height:400px; overflow-y:auto; }
+  </style>
 </head>
 <body>
 <div class="container">
-    <h1 class="mb-4">🎙️ AI 語音轉文字 & 摘要系統</h1>
+  <h1 class="mb-4">🎙️ AI 語音轉文字 & 摘要系統</h1>
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="alert alert-info">
-            {% for msg in messages %}
-                <div>{{ msg }}</div>
-            {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="file" class="form-label">📂 上傳音檔 (.mp3/.wav/.m4a)</label>
-            <input class="form-control" type="file" name="file" id="file" required>
-        </div>
-        <div class="mb-3">
-            <label for="max_segments" class="form-label">🔢 分析段數（選填）</label>
-            <input type="number" name="max_segments" id="max_segments" class="form-control" placeholder="例如：5">
-            {% if total_segments %}
-                <div class="form-text text-success">🧩 共分割出 <strong>{{ total_segments }}</strong> 段</div>
-            {% endif %}
-        </div>
-        <button class="btn btn-primary">🚀 開始分析</button>
-    </form>
-
-    {% if report_link %}
-        <div class="mt-4">
-            <a class="btn btn-success" href="{{ url_for('download', filename=report_link) }}">⬇️ 下載 DOCX 報告</a>
-        </div>
+  {# Flash 訊息 #}
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-info">
+        {% for msg in messages %}
+          <div>{{ msg }}</div>
+        {% endfor %}
+      </div>
     {% endif %}
+  {% endwith %}
 
-    {% if transcript_text %}
+  {# -------------------- Step 1：上傳並切割 -------------------- #}
+  {% if (step|default(1)) == 1 %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Step 1｜上傳音檔並切割</h5>
+        <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="file" class="form-label">📂 上傳音檔（.mp3 / .wav / .m4a）</label>
+            <input class="form-control" type="file" name="file" id="file" accept=".mp3,.wav,.m4a,audio/*" required>
+            <div class="form-text">大小上限約 200MB（若需更大可調整設定）。</div>
+          </div>
+          <button class="btn btn-primary" type="submit">⬆️ 上傳並切割</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  {# -------------------- Step 2：顯示分段數，輸入要分析的段數 -------------------- #}
+  {% if step == 2 %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-2">Step 2｜設定要分析的段數</h5>
+        <div class="alert alert-success mb-3">
+          🧩 這份音檔已分割為 <strong>{{ total_segments }}</strong> 段。
+        </div>
+        <form action="{{ url_for('run') }}" method="post">
+          <div class="mb-3">
+            <label for="max_segments" class="form-label">🔢 要分析的段數（留空表示全部）</label>
+            <input type="number" name="max_segments" id="max_segments" class="form-control"
+                   placeholder="例如：5" min="1" max="{{ total_segments }}">
+            <div class="form-text">建議先少量測試（如 3～5 段），確認品質再跑全部。</div>
+          </div>
+          <button class="btn btn-primary" type="submit">🚀 開始分析</button>
+          <a class="btn btn-outline-secondary ms-2" href="{{ url_for('index') }}">↩️ 重新上傳</a>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  {# -------------------- 分析完成：下載與文字輸出 -------------------- #}
+  {% if report_link %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">✅ 分析完成</h5>
+        <a class="btn btn-success" href="{{ url_for('download', filename=report_link) }}">
+          ⬇️ 下載 DOCX 報告：{{ report_link }}
+        </a>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if transcript_text %}
     <div class="section-title">📄 原始逐字稿（transcript.txt）</div>
-    <pre style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ transcript_text }}</pre>
-{% endif %}
+    <pre style="white-space: pre-wrap;">{{ transcript_text }}</pre>
+  {% endif %}
 
-{% if review_text %}
+  {% if review_text %}
     <div class="section-title">📝 問題清單與修正建議（transcript_review.txt）</div>
-    <pre style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ review_text }}</pre>
-{% endif %}
+    <pre style="white-space: pre-wrap;">{{ review_text }}</pre>
+  {% endif %}
 
-{% if revised_text %}
+  {% if revised_text %}
     <div class="section-title">✅ 修正版逐字稿（transcript_revised.txt）</div>
-    <pre style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">{{ revised_text }}</pre>
-{% endif %}
+    <pre style="white-space: pre-wrap;">{{ revised_text }}</pre>
+  {% endif %}
 
 </div>
 </body>

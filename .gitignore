@@ -24,3 +24,9 @@ Thumbs.db
 output/
 logs/ 
  
+# build & runtime artifacts
+output/
+uploads/
+modules/__pycache__/
+*.pyc
+
