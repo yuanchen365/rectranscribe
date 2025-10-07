@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Billing{% endblock %}
+{% block content %}
+<h1 class="mb-4">Billing / Plan</h1>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <p class="mb-2">Current plan: <strong>{{ current_user.plan or 'free' }}</strong></p>
+    <p class="mb-0">
+      This month usage: <strong>{{ (usage_seconds // 60)|int }}</strong> min
+      {% if quota_seconds is not none %}
+        / <strong>{{ (quota_seconds // 60)|int }}</strong> min (quota)
+      {% else %}
+        / <strong>∞</strong>
+      {% endif %}
+    </p>
+  </div>
+  <div class="card-footer">
+    <a class="btn btn-outline-primary" href="{{ url_for('index') }}">Back</a>
+  </div>
+  </div>
+
+<div class="alert alert-info">
+  Free plan has a monthly quota. Upgrade plan management is not configured yet. You can adjust env var <code>FREE_MONTHLY_QUOTA_SECONDS</code> for testing.
+  If you want, we can add a simple admin switch to set <code>plan</code> to <code>pro</code> for your account.
+  </div>
+{% endblock %}

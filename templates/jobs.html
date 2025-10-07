@@ -1,0 +1,40 @@
+﻿{% extends 'base.html' %}
+{% block title %}我的任務 - Rectranscribe{% endblock %}
+{% block content %}
+<h2 class="mb-3">我的任務</h2>
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>狀態</th>
+        <th>來源檔名</th>
+        <th>段數</th>
+        <th>開始時間</th>
+        <th>完成時間</th>
+        <th>下載</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td>{{ job.id }}</td>
+        <td>{{ job.status }}</td>
+        <td>{{ job.src_filename or '-' }}</td>
+        <td>{{ job.segments or '-' }}</td>
+        <td>{{ job.started_at or '-' }}</td>
+        <td>{{ job.finished_at or '-' }}</td>
+        <td>
+          {% if job.status == 'succeeded' and job.output_dir_rel %}
+            <a class="btn btn-sm btn-success" href="{{ url_for('download', filename=job.output_dir_rel ~ '/meeting_summary.docx') }}">DOCX</a>
+            <a class="btn btn-sm btn-outline-success" href="{{ url_for('download_zip', report=job.output_dir_rel ~ '/meeting_summary.docx') }}">ZIP</a>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

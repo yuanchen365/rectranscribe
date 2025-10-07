@@ -1,0 +1,34 @@
+﻿{% extends 'base.html' %}
+{% block title %}註冊 - Rectranscribe{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title mb-3">建立新帳號</h5>
+        <form method="post" action="{{ url_for('register') }}" class="mb-3">
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" required />
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">密碼</label>
+            <input type="password" class="form-control" id="password" name="password" required />
+          </div>
+          <div class="mb-3">
+            <label for="password2" class="form-label">確認密碼</label>
+            <input type="password" class="form-control" id="password2" name="password2" required />
+          </div>
+          <button class="btn btn-primary" type="submit">送出</button>
+          <a class="btn btn-link" href="{{ url_for('login') }}">已經有帳號？前往登入</a>
+        </form>
+        {% if google_enabled %}
+        <div class="text-center">
+          <a class="btn btn-outline-danger" href="{{ url_for('auth_google') }}">改用 Google 快速註冊 / 登入</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

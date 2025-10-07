@@ -1,0 +1,33 @@
+﻿{% extends 'base.html' %}
+{% block title %}會員管理 - Rectranscribe{% endblock %}
+{% block content %}
+<h2 class="mb-3">會員列表</h2>
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>顯示名稱</th>
+        <th>角色</th>
+        <th>建立時間</th>
+        <th>Google Sub</th>
+        <th>任務數</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.email or '-' }}</td>
+        <td>{{ u.display_name or '-' }}</td>
+        <td>{{ u.role }}</td>
+        <td>{{ u.created_at }}</td>
+        <td>{{ u.google_sub or '-' }}</td>
+        <td>{{ u.job_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

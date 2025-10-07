@@ -1,0 +1,19 @@
+body { background-color:#f9f9f9; padding-top:30px; }
+.container { max-width: 960px; }
+.section-title { font-weight:bold; margin-top:40px; margin-bottom:15px; font-size:1.25rem; }
+.content-pre { background:#f4f4f4; padding:15px; border-radius:6px; max-height:400px; overflow-y:auto; white-space: pre-wrap; }
+
+.drop-zone {
+  border: 2px dashed #6c757d;
+  border-radius: 8px;
+  padding: 22px;
+  color: #6c757d;
+  text-align: center;
+  cursor: pointer;
+  background: #fff;
+}
+.drop-zone.drag-over {
+  background: #e9f5ff;
+  border-color: #0d6efd;
+  color: #0d6efd;
+}

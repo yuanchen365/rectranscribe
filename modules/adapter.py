@@ -1,9 +1,11 @@
 # modules/adapter.py
 from __future__ import annotations
-from pathlib import Path
-from typing import Tuple, Optional, Any
 
-from modules.batch_job import run_batch_process  # ← 依你檔案路徑
+from pathlib import Path
+from typing import Tuple, Optional
+
+from modules.batch_job import run_batch_process
+
 
 def process_audio_job(
     file_path: str | Path,
@@ -19,40 +21,33 @@ def process_audio_job(
     str,  # progress_text
 ]:
     """
-    包裝你的 run_batch_process，提供給 Flask 呼叫。
-    現在版本不使用 start_segment 與 num_segments，僅保留 preview。
+    呼叫 run_batch_process 處理音檔；目前僅回傳最終輸出路徑與空白摘要欄位。
+    如需實際摘要內容，應讀取 output/final/*/meeting_summary.txt 或 JSON。
     """
 
     file_path = Path(file_path).resolve()
 
-    # 呼叫你的核心邏輯（不含 start_segment / num_segments）
+    # 目前 run_batch_process 回傳最終 DOCX 檔案路徑（字串）
     try:
-        results_dict, progress_log = run_batch_process(
-            str(file_path),
-            return_progress=True,
-            preview=preview
+        docx_path = run_batch_process(
+            segments_dir=str(file_path),
+            preview=preview,
+            return_progress=False,
         )
     except TypeError:
-        # 若你的版本甚至沒有 preview，就退化呼叫
-        results_dict, progress_log = run_batch_process(
-            str(file_path),
-            return_progress=True
-        )
+        # 向後相容：若參數位置不同，嘗試以位置引數呼叫
+        docx_path = run_batch_process(str(file_path))
 
-    summary = str(results_dict.get("summary", "") or "")
-    outline = str(results_dict.get("outline", "") or "")
-    todos = str(results_dict.get("todos", "") or "")
+    final_dir = Path(docx_path).parent if docx_path else None
+    txt_path = str(final_dir / "meeting_summary.txt") if final_dir and (final_dir / "meeting_summary.txt").exists() else None
+    json_path = str(final_dir / "meeting_summary.json") if final_dir and (final_dir / "meeting_summary.json").exists() else None
 
-    txt_path = results_dict.get("txt_path")
-    docx_path = results_dict.get("docx_path")
-    json_path = results_dict.get("json_path")
-
+    # 先回傳空字串；使用端可自行解析 txt/json 填入
+    summary = ""
+    outline = ""
+    todos = ""
     revised_placeholder: Optional[str] = None
-
-    if isinstance(progress_log, list):
-        progress_text = "\n".join(map(str, progress_log))
-    else:
-        progress_text = str(progress_log or "")
+    progress_text = ""
 
     return (
         summary,
@@ -64,3 +59,4 @@ def process_audio_job(
         json_path,
         progress_text,
     )
+
